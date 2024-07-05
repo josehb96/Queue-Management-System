@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -17,6 +18,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"github.com/kabukky/httpscerts"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -94,6 +96,46 @@ func main() {
 		go manejoConexion(conn)
 
 	}
+
+}
+
+func getDBConnection() (*sql.DB, error) {
+
+	// Load environment variables from .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	// Get database connection parameters from environment variables
+	dbUser := os.Getenv("DB_USER")
+	dbPass := os.Getenv("DB_PASS")
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbName := os.Getenv("DB_NAME")
+
+	// Verify if every necessary variable is established
+	if dbUser == "" || dbPass == "" || dbHost == "" || dbPort == "" || dbName == "" {
+		err := errors.New("Error: All the database environment variables must be configured.")
+		return nil, err
+	}
+
+	// Build the connection string
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPass, dbHost, dbPort, dbName)
+
+	// Connect to the database
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ping the database to verify the connection
+	err = db.Ping()
+	if err != nil {
+		return nil, err
+	}
+
+	return db, nil
 
 }
 
